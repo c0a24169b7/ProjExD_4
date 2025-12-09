@@ -136,6 +136,7 @@ class Bomb(pg.sprite.Sprite):
         引数2 bird：攻撃対象のこうかとん
         """
         super().__init__()
+        self.state="active"
         rad = random.randint(10, 50)  # 爆弾円の半径：10以上50以下の乱数
         self.image = pg.Surface((2*rad, 2*rad))
         color = random.choice(__class__.colors)  # 爆弾円の色：クラス変数からランダム選択
@@ -492,13 +493,13 @@ def main():
             for bomb in hit_bombs:
                 exps.add(Explosion(bomb, 50))
 
-        # こうかとんと爆弾の衝突
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):
-            bird.change_img(8, screen)  # こうかとん悲しみエフェクト
-            score.update(screen)
-            pg.display.update()
-            time.sleep(2)
-            return
+        # # こうかとんと爆弾の衝突
+        # for bomb in pg.sprite.spritecollide(bird, bombs, True):
+        #     bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+        #     score.update(screen)
+        #     pg.display.update()
+        #     time.sleep(2)
+        #     return
         for bomb in pg.sprite.groupcollide(bombs, gravity, True, False).keys():  # 力場と衝突した爆弾リスト
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
@@ -513,14 +514,15 @@ def main():
                 exps.add(Explosion(bomb, 50))  # 爆発エフェクト
                 score.value += 1  # 1点アップ
             else:
-                if getattr(bomb, "state", None) == "inactive":
+                if bomb.state == "inactive":
                     bomb.kill()
                     continue
-                bird.change_img(8, screen)  # こうかとん悲しみエフェクト
-                score.update(screen)
-                pg.display.update()
-                time.sleep(2)
-                return
+                else:
+                    bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+                    score.update(screen)
+                    pg.display.update()
+                    time.sleep(2)
+                    return
 
         gravity.update()
         gravity.draw(screen)
