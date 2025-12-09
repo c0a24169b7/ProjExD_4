@@ -95,6 +95,13 @@ class Bird(pg.sprite.Sprite):
             if key_lst[k]:
                 sum_mv[0] += mv[0]
                 sum_mv[1] += mv[1]
+                
+            #加速イベント
+            if key_lst[pg.K_LSHIFT]: #スペース
+                self.speed = 20 #加速化処理
+            else: #通常時
+                self.speed = 10
+            
         self.rect.move_ip(self.speed*sum_mv[0], self.speed*sum_mv[1])
         if check_bound(self.rect) != (True, True):
             self.rect.move_ip(-self.speed*sum_mv[0], -self.speed*sum_mv[1])
@@ -243,7 +250,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 0
+        self.value = 10000
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -251,6 +258,46 @@ class Score:
     def update(self, screen: pg.Surface):
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         screen.blit(self.image, self.rect)
+
+class EMP(pg.sprite.Sprite):
+    """
+    電磁パルス（EMP）に関するクラス
+    """
+    def __init__(self, emys: pg.sprite.Group, bombs: pg.sprite.Group, screen: pg.Surface):
+        """
+        EMPを生成し，敵機と爆弾を無効化する
+        引数1 emys：敵機グループ
+        引数2 bombs：爆弾グループ
+        引数3 screen：画面Surface
+        """
+        super().__init__()
+        self.emys = emys
+        self.bombs = bombs
+        self.screen = screen
+        self.lifetime = 3#黄色画面表示時間
+
+        # 敵機を無効化
+        for emy in emys:
+            emy.interval = float("inf")
+            emy.image = pg.transform.laplacian(emy.image)
+
+        # 爆弾を無効化
+        for bomb in bombs:
+            bomb.speed = bomb.speed // 2
+            bomb.state = "inactive"
+
+        # 画面全体に透明な黄色矩形を表示
+        self.image = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
+        self.image.fill((255, 255, 0, 100))  # RGBA (alpha=100)
+        self.rect = self.image.get_rect()
+
+    def update(self):
+        """
+        EMP効果の継続時間を管理
+        """
+        self.lifetime -= 1
+        if self.lifetime <= 0:
+            self.kill()
 
 
 def main():
@@ -264,6 +311,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    emps = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -278,6 +326,10 @@ def main():
                 bird.state = "hyper"
                 bird.hyper_life = 500
                 score.value -= 100
+            if event.type == pg.KEYDOWN and event.key== pg.K_e:
+                if score.value >= 20:
+                    emps.add(EMP(emys,bombs,screen))
+                    score.value -=20
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -302,6 +354,9 @@ def main():
                 exps.add(Explosion(bomb, 50))  # 爆発エフェクト
                 score.value += 1  # 1点アップ
             else:
+                if getattr(bomb, "state", None) == "inactive":
+                    bomb.kill()
+                    continue
                 bird.change_img(8, screen)  # こうかとん悲しみエフェクト
                 score.update(screen)
                 pg.display.update()
@@ -317,6 +372,8 @@ def main():
         bombs.draw(screen)
         exps.update()
         exps.draw(screen)
+        emps.update()
+        emps.draw(screen)
         score.update(screen)
         pg.display.update()
         tmr += 1
